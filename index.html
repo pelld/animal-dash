@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#6c63ff">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="description" content="Animal Dash — a cheerful racing game for young children.">
+  <title>Animal Dash</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="app-shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">A tiny racing game</p>
+        <h1>Animal Dash</h1>
+      </div>
+      <button id="soundButton" class="icon-button" type="button" aria-label="Turn sound on or off">🔊</button>
+    </header>
+
+    <section id="menuScreen" class="panel menu-panel" aria-labelledby="chooseHeading">
+      <div class="hero-copy">
+        <span class="hero-badge">🏁 Ready, steady, dash!</span>
+        <h2 id="chooseHeading">Choose your racer</h2>
+        <p>Collect fruit, jump over puddles and race your animal friends to the finish.</p>
+      </div>
+
+      <div id="animalGrid" class="animal-grid" role="radiogroup" aria-label="Choose an animal">
+        <button class="animal-card selected" type="button" data-animal="rabbit" role="radio" aria-checked="true">
+          <span class="animal-preview rabbit" aria-hidden="true"><span></span></span>
+          <strong>Ruby Rabbit</strong>
+          <small>Super springy</small>
+        </button>
+        <button class="animal-card" type="button" data-animal="fox" role="radio" aria-checked="false">
+          <span class="animal-preview fox" aria-hidden="true"><span></span></span>
+          <strong>Freddie Fox</strong>
+          <small>Fast and clever</small>
+        </button>
+        <button class="animal-card" type="button" data-animal="panda" role="radio" aria-checked="false">
+          <span class="animal-preview panda" aria-hidden="true"><span></span></span>
+          <strong>Poppy Panda</strong>
+          <small>Cool and calm</small>
+        </button>
+        <button class="animal-card" type="button" data-animal="crocodile" role="radio" aria-checked="false">
+          <span class="animal-preview crocodile" aria-hidden="true"><span></span></span>
+          <strong>Charlie Croc</strong>
+          <small>Chomps the track</small>
+        </button>
+      </div>
+
+      <div class="menu-footer">
+        <div class="how-to-play" aria-label="How to play">
+          <span><kbd>←</kbd><kbd>→</kbd> Move</span>
+          <span><kbd>Space</kbd> Jump</span>
+          <span>📱 Tap the buttons on a phone or tablet</span>
+        </div>
+        <button id="startButton" class="primary-button" type="button">Start race <span aria-hidden="true">➜</span></button>
+      </div>
+    </section>
+
+    <section id="gameScreen" class="game-panel hidden" aria-label="Animal Dash race">
+      <div class="hud" aria-live="polite">
+        <div class="hud-card">
+          <span class="hud-label">Place</span>
+          <strong id="placeValue">1st</strong>
+        </div>
+        <div class="hud-card progress-card">
+          <span class="hud-label">Finish line</span>
+          <div class="progress-track"><div id="progressFill" class="progress-fill"></div></div>
+        </div>
+        <div class="hud-card">
+          <span class="hud-label">Fruit</span>
+          <strong><span aria-hidden="true">🍓</span> <span id="fruitValue">0</span></strong>
+        </div>
+        <div class="hud-card">
+          <span class="hud-label">Best</span>
+          <strong id="bestTimeValue">—</strong>
+        </div>
+      </div>
+
+      <div class="canvas-wrap">
+        <canvas id="gameCanvas" width="960" height="540" aria-label="Animal racing game"></canvas>
+        <div id="countdown" class="countdown hidden" aria-live="assertive"></div>
+        <div id="messageBubble" class="message-bubble hidden" aria-live="polite"></div>
+      </div>
+
+      <div class="touch-controls" aria-label="Touch controls">
+        <button id="leftButton" type="button" aria-label="Move left">◀</button>
+        <button id="jumpButton" class="jump-button" type="button" aria-label="Jump">JUMP</button>
+        <button id="rightButton" type="button" aria-label="Move right">▶</button>
+      </div>
+    </section>
+
+    <section id="resultsScreen" class="panel results-panel hidden" aria-live="polite">
+      <div id="resultConfetti" class="confetti" aria-hidden="true"></div>
+      <p class="eyebrow">Race complete</p>
+      <h2 id="resultHeading">Amazing race!</h2>
+      <div id="resultAnimal" class="result-animal" aria-hidden="true"></div>
+      <p id="resultText" class="result-text"></p>
+      <div class="result-stats">
+        <div><span>Place</span><strong id="resultPlace">1st</strong></div>
+        <div><span>Time</span><strong id="resultTime">0.0s</strong></div>
+        <div><span>Fruit</span><strong id="resultFruit">0</strong></div>
+      </div>
+      <p id="unlockMessage" class="unlock-message hidden"></p>
+      <div class="result-actions">
+        <button id="raceAgainButton" class="primary-button" type="button">Race again</button>
+        <button id="chooseAgainButton" class="secondary-button" type="button">Choose another animal</button>
+      </div>
+    </section>
+  </main>
+
+  <script src="game.js"></script>
+</body>
+</html>
