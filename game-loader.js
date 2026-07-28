@@ -246,7 +246,10 @@
         for (let i = 0; i < treeCount; i += 1) {
             const progress = ((camera + i * sceneryLoop / treeCount) % sceneryLoop) / sceneryLoop;
             const depth = Math.pow(progress, 1.55);
-            const y = horizon + 26 + depth * (H - horizon + 72);
+
+            // Begin each row directly on the grass horizon. The tree then moves
+            // down and outwards as it approaches the foreground.
+            const y = horizon + depth * (H - horizon + 72);
 
             if (y > H + 65) continue;
 
@@ -268,7 +271,11 @@
             ctx.fillRect(x - trunkWidth / 2, y - trunkHeight, trunkWidth, trunkHeight);
 
             const canopyY = y - trunkHeight - 8 * scale;
-            const leafColour = i % 4 === 0 ? "#66c95e" : "#45ad55";
+
+            // Trees are generated as left/right pairs. Using the pair number
+            // means both sides now alternate through the same green sequence.
+            const pairIndex = Math.floor(i / 2);
+            const leafColour = pairIndex % 2 === 0 ? "#66c95e" : "#45ad55";
 
             ctx.fillStyle = leafColour;
             [
