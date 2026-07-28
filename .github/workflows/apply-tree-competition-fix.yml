@@ -1,7 +1,7 @@
 name: Apply Animal Dash scenery and race fixes
 
 on:
-  push:
+  pull_request:
     branches:
       - main
 
