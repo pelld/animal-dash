@@ -291,7 +291,7 @@
             const outwardDistance = 38 + depth * 128;
             const x = leftSide ? roadEdge - outwardDistance : roadEdge + outwardDistance;
 
-            ctx.fillStyle = `rgba(35, 90, 35, ${0.08 + depth * 0.14})`;
+            ctx.fillStyle = "rgba(35, 90, 35, " + (0.08 + depth * 0.14) + ")";
             ctx.beginPath();
             ctx.ellipse(x, y + 2, 30 * scale, 8 * scale, 0, 0, Math.PI * 2);
             ctx.fill();
