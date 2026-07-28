@@ -4,15 +4,15 @@
     // ============================================================
     // 00. PURPOSE
     // ============================================================
-    // Load the original game source, apply the focused race and scenery
-    // improvements below, then execute the corrected game. Keeping the
-    // replacements here means the original, fully commented game remains
-    // readable while the newer behaviour is kept together in one place.
+    // Load the original game source, replace the focused sections below,
+    // then execute the adjusted game. The computer racers are deliberately
+    // simple: they wander independently and react only when they actually
+    // touch fruit or mud.
 
     const gameUrl = new URL("game.js", document.baseURI);
 
     // ============================================================
-    // 01. OPPONENT STATE AND BASE PACE
+    // 01. SIMPLE OPPONENT STATE
     // ============================================================
 
     const oldOpponents = `                // Begin almost level with the player, with only enough
@@ -24,34 +24,32 @@
                 // decide the race instead of the player winning by default.
                 speed: 33.7 + index * 0.65 + Math.random() * 1.15,`;
 
-    const newOpponents = `                // Start on virtually the same line as the player.
+    const newOpponents = `                // Start almost level, but not precisely on top of one another.
                 d: -index * 1.5,
 
-                // Opponents now move between lanes rather than remaining
-                // locked to their starting lane.
+                // Opponents drift between lanes independently. They do not
+                // inspect the course or deliberately seek fruit and avoid mud.
                 target: index,
                 x: lanes[index],
+                moveTimer: 0.35 + Math.random() * 1.2,
 
-                // Each opponent can jump, collect fruit and be slowed by mud.
+                // They can make an occasional random jump, but it is not timed
+                // to a particular obstacle.
                 jump: 0,
                 vy: 0,
+
+                // Fruit and mud affect them only after an actual collision.
                 boost: 0,
                 slow: 0,
                 fruit: 0,
                 lastMud: -1,
 
-                // Better racers notice hazards sooner and make more reliable
-                // decisions. The three opponents deliberately have different
-                // skill levels so they do not move as one identical group.
-                skill: Math.min(0.94, 0.58 + index * 0.16 + Math.random() * 0.06),
-                decisionTimer: Math.random() * 0.22,
-
-                // Base pace is close to the player's. Fruit, mud and decisions
-                // now create the differences during the race.
-                speed: 34.25 + index * 0.38 + Math.random() * 0.45,`;
+                // Keep their ordinary pace slightly below the player's so the
+                // game remains suitable for younger children.
+                speed: 32.25 + index * 0.22 + Math.random() * 0.45,`;
 
     // ============================================================
-    // 02. ACTIVE COMPUTER RACERS
+    // 02. RANDOM COMPUTER MOVEMENT AND COLLISIONS
     // ============================================================
 
     const opponentUpdateStartMarker = `        // --------------------------------------------------------
@@ -61,25 +59,68 @@
         // 08B-5. Display and finish checks`;
 
     const correctedOpponentUpdate = `        // --------------------------------------------------------
-        // 08B-3. Computer-controlled racers
+        // 08B-3. Player fruit and mud collisions
+        // --------------------------------------------------------
+
+        player.lastMud ??= -1;
+
+        game.items.forEach((item) => {
+            const horizontalDistance = Math.abs(lanes[item.lane] - player.x);
+            if (horizontalDistance > 44 || Math.abs(item.d - player.d) > 11) return;
+
+            if (item.kind === "fruit" && !item.used) {
+                // Give the player first chance when two racers reach the same
+                // fruit during the same animation frame.
+                item.used = true;
+                player.fruit += 1;
+                player.boost = 1.2;
+
+                beep(760);
+                beep(980, 0.11, 0.06);
+                message("Fruit boost! ⚡");
+            } else if (item.kind === "mud" && player.jump < 18 && player.lastMud !== item.d) {
+                // Puddles remain on the track and can affect every racer.
+                player.lastMud = item.d;
+                player.slow = 1.1;
+
+                beep(130, 0.2);
+                message("Splish splash! 💦");
+            }
+        });
+
+
+        // --------------------------------------------------------
+        // 08B-4. Computer-controlled racers
         // --------------------------------------------------------
 
         game.opponents.forEach((opponent, index) => {
-            // Stop moving this opponent once it has finished.
             if (opponent.d >= finish) return;
 
-            // Reduce temporary effects.
             opponent.boost = Math.max(0, opponent.boost - dt);
             opponent.slow = Math.max(0, opponent.slow - dt);
 
-            // Slide visibly towards the chosen lane.
-            opponent.x += (lanes[opponent.target] - opponent.x) * Math.min(1, dt * (7.2 + opponent.skill * 4.2));
+            // Each animal makes an independent, unplanned movement decision.
+            // Most decisions simply keep its current lane. Occasionally it
+            // wanders left or right, and very occasionally it jumps.
+            opponent.moveTimer -= dt;
 
-            if (Math.abs(lanes[opponent.target] - opponent.x) < 4) {
-                opponent.lane = opponent.target;
+            if (opponent.moveTimer <= 0) {
+                const roll = Math.random();
+
+                if (roll < 0.34) {
+                    const direction = Math.random() < 0.5 ? -1 : 1;
+                    opponent.target = Math.max(0, Math.min(2, opponent.target + direction));
+                } else if (roll < 0.43 && opponent.jump <= 1) {
+                    opponent.vy = 455;
+                }
+
+                opponent.moveTimer = 0.55 + Math.random() * 1.45 + index * 0.08;
             }
 
-            // Apply the same jumping physics used by the player.
+            // Slide towards the randomly selected lane.
+            opponent.x += (lanes[opponent.target] - opponent.x) * Math.min(1, dt * 7.4);
+
+            // Apply the same basic jump physics as the player.
             if (opponent.jump > 0 || opponent.vy > 0) {
                 opponent.jump += opponent.vy * dt;
                 opponent.vy -= 1020 * dt;
@@ -90,45 +131,8 @@
                 }
             }
 
-            // Look ahead at nearby fruit and puddles at intervals. Higher-skill
-            // racers react more frequently and make better choices.
-            opponent.decisionTimer -= dt;
-
-            if (opponent.decisionTimer <= 0) {
-                const upcoming = game.items
-                    .filter((item) => item.d > opponent.d + 7 && item.d < opponent.d + 95 && (item.kind === "mud" || !item.used))
-                    .sort((a, b) => a.d - b.d);
-
-                const danger = upcoming.find((item) => item.kind === "mud" && item.lane === opponent.target);
-                const fruit = upcoming.find((item) => item.kind === "fruit" && !item.used);
-
-                if (danger) {
-                    const gap = danger.d - opponent.d;
-                    const safeLanes = [0, 1, 2].filter((lane) => !upcoming.some((item) => item.kind === "mud" && item.lane === lane && item.d - opponent.d < 58));
-
-                    if (gap < 34 && opponent.jump <= 1 && Math.random() < 0.38 + opponent.skill * 0.58) {
-                        // A late decision becomes a jump. Less-skilled racers
-                        // sometimes mistime it and hit the puddle instead.
-                        opponent.vy = 470;
-                    } else if (safeLanes.length && Math.random() < 0.30 + opponent.skill * 0.68) {
-                        // Prefer a safe lane which also contains nearby fruit.
-                        const fruitLane = fruit && safeLanes.includes(fruit.lane) ? fruit.lane : null;
-                        opponent.target = fruitLane ?? safeLanes[Math.floor(Math.random() * safeLanes.length)];
-                    }
-                } else if (fruit && Math.random() < 0.25 + opponent.skill * 0.70) {
-                    // Chase available fruit, but not with perfect consistency.
-                    opponent.target = fruit.lane;
-                } else if (Math.random() < 0.08 + (1 - opponent.skill) * 0.15) {
-                    // Occasional imperfect wandering keeps racers from looking
-                    // mechanically fixed even when the road is clear.
-                    opponent.target = Math.floor(Math.random() * lanes.length);
-                }
-
-                opponent.decisionTimer = 0.14 + (1 - opponent.skill) * 0.27 + Math.random() * 0.16;
-            }
-
-            // Fruit is collected once by whichever racer reaches it first.
-            // Mud remains on the course and can affect every racer once.
+            // They do not plan around the course. Fruit and mud only matter
+            // when random movement happens to put the animal on top of them.
             game.items.forEach((item) => {
                 const horizontalDistance = Math.abs(lanes[item.lane] - opponent.x);
                 if (horizontalDistance > 44 || Math.abs(item.d - opponent.d) > 11) return;
@@ -136,15 +140,15 @@
                 if (item.kind === "fruit" && !item.used) {
                     item.used = true;
                     opponent.fruit += 1;
-                    opponent.boost = 1.15;
+                    opponent.boost = 1.0;
                 } else if (item.kind === "mud" && opponent.jump < 18 && opponent.lastMud !== item.d) {
                     opponent.lastMud = item.d;
-                    opponent.slow = 1.1;
+                    opponent.slow = 1.2;
                 }
             });
 
-            const wobble = Math.sin(game.elapsed * 1.15 + index * 2.2) * 0.35;
-            const speed = opponent.speed * (opponent.boost > 0 ? 1.29 : 1) * (opponent.slow > 0 ? 0.58 : 1);
+            const wobble = Math.sin(game.elapsed * 1.05 + index * 2.4) * 0.28;
+            const speed = opponent.speed * (opponent.boost > 0 ? 1.22 : 1) * (opponent.slow > 0 ? 0.57 : 1);
 
             opponent.d += (speed + wobble) * dt;
 
@@ -154,41 +158,10 @@
         });
 
 
-        // --------------------------------------------------------
-        // 08B-4. Player fruit and mud collisions
-        // --------------------------------------------------------
-
-        player.lastMud ??= -1;
-
-        game.items.forEach((item) => {
-            // Use the player's visible x position so a collision happens only
-            // after the animal has actually reached the new lane.
-            const horizontalDistance = Math.abs(lanes[item.lane] - player.x);
-            if (horizontalDistance > 44 || Math.abs(item.d - player.d) > 11) return;
-
-            if (item.kind === "fruit" && !item.used) {
-                item.used = true;
-                player.fruit += 1;
-                player.boost = 1.2;
-
-                beep(760);
-                beep(980, 0.11, 0.06);
-                message("Fruit boost! ⚡");
-            } else if (item.kind === "mud" && player.jump < 18 && player.lastMud !== item.d) {
-                // Puddles remain on the track; each racer can hit the same one.
-                player.lastMud = item.d;
-                player.slow = 1.1;
-
-                beep(130, 0.2);
-                message("Splish splash! 💦");
-            }
-        });
-
-
 `;
 
     // ============================================================
-    // 03. VISIBLE OPPONENT MOVEMENT AND EFFECTS
+    // 03. VISIBLE RANDOM MOVEMENT AND EFFECTS
     // ============================================================
 
     const drawRacersStartMarker = `    // ------------------------------------------------------------
@@ -229,7 +202,6 @@
             .forEach((racer) => {
                 if (racer.y <= -90 || racer.y >= H + 90) return;
 
-                // Computer racers now receive a ground shadow as they jump.
                 if (!racer.player) {
                     ctx.fillStyle = "rgba(0,0,0,.16)";
                     ctx.beginPath();
@@ -239,8 +211,6 @@
 
                 drawRacer(racer.x, racer.y, racer.type, racer.player, racer.jump);
 
-                // A small effect makes boosts and mud impacts readable without
-                // covering the animal or adding another HUD.
                 if (!racer.player && (racer.boosted || racer.slowed)) {
                     ctx.font = "24px system-ui";
                     ctx.textAlign = "center";
@@ -266,11 +236,6 @@
     const correctedScenery = `    // ------------------------------------------------------------
     // 12C. Trees and scenery
     // ------------------------------------------------------------
-    //
-    // Trees use their own perspective track rather than the road-object
-    // coordinate system. Their bases always begin below the grass horizon,
-    // then move outwards and grow as they approach the bottom of the screen.
-    // ------------------------------------------------------------
 
     function drawScenery() {
         const horizon = Math.floor(H * 0.56);
@@ -281,8 +246,8 @@
         for (let i = 0; i < treeCount; i += 1) {
             const progress = ((camera + i * sceneryLoop / treeCount) % sceneryLoop) / sceneryLoop;
             const depth = Math.pow(progress, 1.55);
-
             const y = horizon + 26 + depth * (H - horizon + 72);
+
             if (y > H + 65) continue;
 
             const scale = 0.3 + depth * 1.02;
@@ -322,38 +287,34 @@
 `;
 
     // ============================================================
-    // 05. SOURCE REPLACEMENT HELPERS
+    // 05. SOURCE REPLACEMENT AND STARTUP
     // ============================================================
 
-    function replaceBlock(source, startMarker, endMarker, replacement, label) {
+    function replaceBetween(source, startMarker, endMarker, replacement, label) {
         const start = source.indexOf(startMarker);
         const end = source.indexOf(endMarker, start);
 
         if (start < 0 || end < 0) {
-            throw new Error(`The expected ${label} section was not found.`);
+            throw new Error("The expected " + label + " section was not found.");
         }
 
         return source.slice(0, start) + replacement + source.slice(end);
     }
 
-    // ============================================================
-    // 06. LOAD, VERIFY AND EXECUTE
-    // ============================================================
-
     async function loadGame() {
         const response = await fetch(gameUrl, { cache: "no-store" });
-        if (!response.ok) throw new Error(`Could not load game.js (${response.status})`);
+        if (!response.ok) throw new Error("Could not load game.js (" + response.status + ")");
 
         let source = await response.text();
 
         if (!source.includes(oldOpponents)) {
-            throw new Error("The expected opponent state section was not found.");
+            throw new Error("The expected opponent state was not found.");
         }
 
         source = source.replace(oldOpponents, newOpponents);
-        source = replaceBlock(source, opponentUpdateStartMarker, opponentUpdateEndMarker, correctedOpponentUpdate, "opponent update");
-        source = replaceBlock(source, drawRacersStartMarker, drawRacersEndMarker, correctedDrawRacers, "racer drawing");
-        source = replaceBlock(source, sceneryStartMarker, sceneryEndMarker, correctedScenery, "tree scenery");
+        source = replaceBetween(source, opponentUpdateStartMarker, opponentUpdateEndMarker, correctedOpponentUpdate, "opponent update");
+        source = replaceBetween(source, drawRacersStartMarker, drawRacersEndMarker, correctedDrawRacers, "racer drawing");
+        source = replaceBetween(source, sceneryStartMarker, sceneryEndMarker, correctedScenery, "tree scenery");
 
         const blobUrl = URL.createObjectURL(new Blob([source], { type: "text/javascript" }));
         const script = document.createElement("script");
@@ -362,7 +323,7 @@
         script.onload = () => URL.revokeObjectURL(blobUrl);
         script.onerror = () => {
             URL.revokeObjectURL(blobUrl);
-            throw new Error("The corrected game script could not be started.");
+            throw new Error("The adjusted game script could not be started.");
         };
 
         document.body.appendChild(script);
