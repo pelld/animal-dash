@@ -46,7 +46,7 @@
 
                 // Keep their ordinary pace slightly below the player's so the
                 // game remains suitable for younger children.
-                speed: 32.25 + index * 0.22 + Math.random() * 0.45,`;
+                speed: 33.25 + index * 0.22 + Math.random() * 0.45,`;
 
     // ============================================================
     // 02. RANDOM COMPUTER MOVEMENT AND COLLISIONS
