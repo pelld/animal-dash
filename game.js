@@ -372,11 +372,14 @@
                 // Each opponent starts in a different lane.
                 lane: index,
 
-                // Stagger their starting positions slightly.
-                d: -8 - index * 7,
+                // Begin almost level with the player, with only enough
+                // separation to keep the starting animals readable.
+                d: -2 - index * 2,
 
-                // Give each opponent a slightly different random speed.
-                speed: 32.4 + Math.random() * 3.2,
+                // One opponent is usually beatable at normal speed, one is
+                // close, and one is quicker. Fruit and clean driving now
+                // decide the race instead of the player winning by default.
+                speed: 33.7 + index * 0.65 + Math.random() * 1.15,
 
                 // This is recorded when the opponent finishes.
                 finishTime: 0
@@ -430,16 +433,16 @@
         beep(680, 0.12);
         beep(900, 0.15, 0.1);
 
-        // The update loop will now move the racers.
+        // Start movement on the same frame as GO. The countdown can
+        // remain visible briefly without holding the racers in place.
         game.phase = "racing";
         game.start = performance.now();
 
-        await wait(450);
+        clearTimeout(startRace.countdownTimer);
+        startRace.countdownTimer = setTimeout(() => countdown.classList.add("hidden"), 450);
 
-        countdown.classList.add("hidden");
-
-        // Remember when the previous frame was drawn.
-        let last = performance.now();
+        // Begin timing from GO rather than 450 milliseconds later.
+        let last = game.start;
 
         // This function runs repeatedly, usually around 60 times per second.
         const loop = (now) => {
@@ -524,9 +527,10 @@
         // Move the player along the course.
         player.d += speed * dt;
 
-        // Keep the player towards the bottom of the visible course
-        // by moving the virtual camera behind them.
-        game.camera = Math.max(0, player.d - 90);
+        // Keep the player's course position at y = 420. Fruit, mud,
+        // opponents and the finish line now use the same position system
+        // as the player instead of appearing about 288 pixels too early.
+        game.camera = player.d;
 
 
         // --------------------------------------------------------
@@ -559,7 +563,12 @@
             //   - items already collected or hit;
             //   - items in another lane;
             //   - items too far away from the player.
-            if (item.used || item.lane !== player.target || Math.abs(item.d - player.d) > 10) return;
+            // Use the player's visible x position, not merely the lane
+            // they have requested. This prevents collecting an item while
+            // the animal is still sliding across from another lane.
+            const horizontalDistance = Math.abs(lanes[item.lane] - player.x);
+
+            if (item.used || horizontalDistance > 44 || Math.abs(item.d - player.d) > 11) return;
 
             if (item.kind === "fruit") {
                 item.used = true;
