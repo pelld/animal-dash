@@ -5,7 +5,7 @@
 // returning players receive the latest race logic instead of an older
 // cached script.
 
-const CACHE_NAME = "animal-dash-v4";
+const CACHE_NAME = "animal-dash-v5";
 
 const ASSETS = [
   "./",
