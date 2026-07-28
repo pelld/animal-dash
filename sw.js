@@ -1,9 +1,18 @@
-const CACHE_NAME = "animal-dash-v1";
+// ============================================================
+// 00. OFFLINE CACHE
+// ============================================================
+// Change the cache name whenever the game files change. This ensures
+// returning players receive the latest race logic instead of an older
+// cached script.
+
+const CACHE_NAME = "animal-dash-v3";
+
 const ASSETS = [
   "./",
   "./index.html",
   "./styles.css",
   "./game.js",
+  "./game-loader.js",
   "./favicon.svg",
   "./manifest.webmanifest",
   "./icon-192.png",
@@ -19,11 +28,13 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys().then((keys) => Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))))
   );
+
   self.clients.claim();
 });
 
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
+
   event.respondWith(
     caches.match(event.request).then((cached) => cached || fetch(event.request).then((response) => {
       const copy = response.clone();
